@@ -15,13 +15,20 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'expense-tracker';
 // Add expense
 const addExpense = async (req, res) => {
   try {
-    const { title, amount, date } = req.body;
+    const { title, amount } = req.body;
 
     // Generate UUID
     const id = uuidv4();
+    const now = new Date().toISOString();
 
     // Build the expense object
-    const expense = { id, title, amount, date };
+    const expense = {
+      id,
+      title,
+      amount,
+      createdAt: now,
+      updatedAt: now,
+    };
 
     // Save to DynamoDB
     await dynamoDB.send(
@@ -132,7 +139,11 @@ const updateExpense = async (req, res) => {
       exprAttrValues[`:${key}`] = updates[key];
     });
 
-    if (updateExp.length === 0) {
+    // Always update updatedAt
+    updateExp.push(`updatedAt = :updatedAt`);
+    exprAttrValues[':updatedAt'] = new Date().toISOString();
+
+    if (updateExp.length === 1) {
       return errorResponse(
         res,
         StatusCodes.BAD_REQUEST,
