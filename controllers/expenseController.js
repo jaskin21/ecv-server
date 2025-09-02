@@ -15,7 +15,7 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'expense-tracker';
 // Add expense
 const addExpense = async (req, res) => {
   try {
-    const { title, amount } = req.body;
+    const { description, amount } = req.body;
 
     // Generate UUID
     const id = uuidv4();
@@ -24,7 +24,7 @@ const addExpense = async (req, res) => {
     // Build the expense object
     const expense = {
       id,
-      title,
+      description,
       amount,
       createdAt: now,
       updatedAt: now,
