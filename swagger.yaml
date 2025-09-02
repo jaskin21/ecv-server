@@ -129,8 +129,23 @@ paths:
 
   /expenses/summary/total:
     get:
-      summary: Get total expenses summary
+      summary: Get total expenses summary within optional date range
       tags: [Expenses]
+      parameters:
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          required: false
+          description: Start date for filtering expenses (inclusive)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          required: false
+          description: End date for filtering expenses (inclusive)
       responses:
         '200':
           description: Total expenses summary
@@ -141,8 +156,25 @@ paths:
                 properties:
                   total:
                     type: number
-                example:
-                  total: 1250.75
+                    example: 1250.75
+                  count:
+                    type: integer
+                    example: 5
+                  startDate:
+                    type: string
+                    format: date
+                    nullable: true
+                    example: "2025-09-01"
+                  endDate:
+                    type: string
+                    format: date
+                    nullable: true
+                    example: "2025-09-30"
+        '400':
+          description: Invalid request parameters
+        '500':
+          description: Failed to fetch summary
+
 
 components:
   schemas:

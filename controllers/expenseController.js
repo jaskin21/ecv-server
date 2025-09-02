@@ -219,19 +219,47 @@ const deleteExpense = async (req, res) => {
   }
 };
 
-// Get summary (total expenses)
+// Get summary (total expenses within date range)
 const getSummary = async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+
+    // Fetch all expenses
     const result = await dynamoDB.send(
       new ScanCommand({ TableName: TABLE_NAME })
     );
-    const total = result.Items.reduce((sum, item) => sum + item.amount, 0);
 
-    res.json({ total });
+    let items = result.Items || [];
+
+    // Convert to Date objects and filter if startDate & endDate provided
+    if (startDate || endDate) {
+      items = items.filter((item) => {
+        const expenseDate = new Date(item.createdAt); // or updatedAt, depending on your logic
+        if (startDate && expenseDate < new Date(startDate)) return false;
+        if (endDate && expenseDate > new Date(endDate)) return false;
+        return true;
+      });
+    }
+
+    // Calculate total
+    const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    return successResponse(res, StatusCodes.OK, 'Summary fetched successfully', {
+      total,
+      count: items.length,
+      startDate: startDate || null,
+      endDate: endDate || null,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return errorResponse(
+      res,
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      'Failed to fetch summary',
+      err.message
+    );
   }
 };
+
 
 module.exports = {
   addExpense,
