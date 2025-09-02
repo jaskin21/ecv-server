@@ -1,0 +1,178 @@
+openapi: 3.0.0
+info:
+  title: Expense API
+  version: 1.0.0
+  description: API for managing expenses with DynamoDB backend
+servers:
+  - url: http://localhost:3000
+    description: Local dev server
+
+paths:
+  /expenses:
+    get:
+      summary: Get all expenses
+      tags: [Expenses]
+      responses:
+        '200':
+          description: A list of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+    post:
+      summary: Add a new expense
+      tags: [Expenses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseInput'
+            example:
+              title: "Lunch"
+              amount: 12.5
+              category: "Food"
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+
+  /expenses/{id}:
+    get:
+      summary: Get an expense by ID
+      tags: [Expenses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expense found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+    patch:
+      summary: Partially update an expense
+      description: Update one or more fields of an existing expense by ID. Only the provided fields will be updated.
+      tags: [Expenses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The ID of the expense to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Lunch with client"
+                amount:
+                  type: number
+                  example: 25.5
+                date:
+                  type: string
+                  format: date
+                  example: "2025-09-02"
+              additionalProperties: false
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Expense updated successfully"
+                  data:
+                    $ref: '#/components/schemas/Expense'
+        '400':
+          description: Bad Request (invalid or empty update fields)
+        '404':
+          description: Expense not found
+        '500':
+          description: Failed to update expense
+
+    delete:
+      summary: Delete an expense
+      tags: [Expenses]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Expense deleted
+
+  /expenses/summary/total:
+    get:
+      summary: Get total expenses summary
+      tags: [Expenses]
+      responses:
+        '200':
+          description: Total expenses summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: number
+                example:
+                  total: 1250.75
+
+components:
+  schemas:
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        amount:
+          type: number
+        category:
+          type: string
+      example:
+        id: "123"
+        title: "Lunch"
+        amount: 12.5
+        category: "Food"
+
+    ExpenseInput:
+      type: object
+      properties:
+        title:
+          type: string
+        amount:
+          type: number
+        category:
+          type: string
+      required:
+        - title
+        - amount
+        - category
