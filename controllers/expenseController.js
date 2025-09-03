@@ -15,22 +15,20 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'expense-tracker';
 // Add expense
 const addExpense = async (req, res) => {
   try {
-    const { description, amount } = req.body;
+    const { description, amount, category } = req.body;
 
-    // Generate UUID
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    // Build the expense object
     const expense = {
       id,
       description,
       amount,
+      category: category || 'Other',
       createdAt: now,
       updatedAt: now,
     };
 
-    // Save to DynamoDB
     await dynamoDB.send(
       new PutCommand({
         TableName: TABLE_NAME,
@@ -38,7 +36,6 @@ const addExpense = async (req, res) => {
       })
     );
 
-    // Success response
     return successResponse(
       res,
       StatusCodes.CREATED,
@@ -46,7 +43,6 @@ const addExpense = async (req, res) => {
       expense
     );
   } catch (err) {
-    // Error response
     return errorResponse(
       res,
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -55,6 +51,7 @@ const addExpense = async (req, res) => {
     );
   }
 };
+
 
 // const getExpenses = async (req, res) => {
 //   try {
@@ -81,47 +78,43 @@ const addExpense = async (req, res) => {
 // };
 const getExpenses = async (req, res) => {
   try {
-    const { search } = req.query;
-    console.log('Fetching expenses with search:', search);
+    const { search, category } = req.query;
+    console.log('Fetching expenses with search:', search, 'category:', category);
 
-    let result;
+    let params = { TableName: TABLE_NAME };
 
-    if (search) {
-      // ✅ Try to detect if the search term is a number
-      const searchNumber = Number(search);
-      const isNumeric = !isNaN(searchNumber);
-
+    if (search || category) {
       const filterExpressions = [];
-      const expressionValues = {
-        ':search': search,
-      };
+      const exprAttrValues = {};
+      const exprAttrNames = { '#status': 'status' };
 
-      // Fields that are searchable as strings
-      const searchableFields = ['id', 'category', '#status', 'description']; // alias status
+      if (search) {
+        const searchNumber = Number(search);
+        const isNumeric = !isNaN(searchNumber);
 
-      searchableFields.forEach((field) => {
-        filterExpressions.push(`contains(${field}, :search)`);
-      });
+        const searchableFields = ['id', 'category', '#status', 'description'];
+        filterExpressions.push(
+          ...searchableFields.map((field) => `contains(${field}, :search)`)
+        );
+        exprAttrValues[':search'] = search;
 
-      // ✅ Add numeric match if search is a number
-      if (isNumeric) {
-        filterExpressions.push('amount = :searchNumber');
-        expressionValues[':searchNumber'] = searchNumber;
+        if (isNumeric) {
+          filterExpressions.push('amount = :searchNumber');
+          exprAttrValues[':searchNumber'] = searchNumber;
+        }
       }
 
-      const params = {
-        TableName: TABLE_NAME,
-        FilterExpression: filterExpressions.join(' OR '),
-        ExpressionAttributeValues: expressionValues,
-        ExpressionAttributeNames: {
-          '#status': 'status', // reserved keyword fix
-        },
-      };
+      if (category) {
+        filterExpressions.push('category = :category');
+        exprAttrValues[':category'] = category;
+      }
 
-      result = await dynamoDB.send(new ScanCommand(params));
-    } else {
-      result = await dynamoDB.send(new ScanCommand({ TableName: TABLE_NAME }));
+      params.FilterExpression = filterExpressions.join(' OR ');
+      params.ExpressionAttributeValues = exprAttrValues;
+      params.ExpressionAttributeNames = exprAttrNames;
     }
+
+    const result = await dynamoDB.send(new ScanCommand(params));
 
     return successResponse(
       res,
@@ -138,6 +131,8 @@ const getExpenses = async (req, res) => {
     );
   }
 };
+
+
 
 // Get expense by ID
 const getExpense = async (req, res) => {
@@ -177,7 +172,6 @@ const updateExpense = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    // 1. Check if expense exists
     const existing = await dynamoDB.send(
       new GetCommand({
         TableName: TABLE_NAME,
@@ -189,34 +183,27 @@ const updateExpense = async (req, res) => {
       return errorResponse(res, StatusCodes.NOT_FOUND, 'Expense not found');
     }
 
-    // 2. Build dynamic UpdateExpression
     let updateExp = [];
     let exprAttrValues = {};
+    let exprAttrNames = {};
 
     Object.keys(updates).forEach((key) => {
-      updateExp.push(`${key} = :${key}`);
+      updateExp.push(`#${key} = :${key}`);
       exprAttrValues[`:${key}`] = updates[key];
+      exprAttrNames[`#${key}`] = key; // prevent reserved word issues
     });
 
-    // Always update updatedAt
-    updateExp.push(`updatedAt = :updatedAt`);
+    updateExp.push(`#updatedAt = :updatedAt`);
     exprAttrValues[':updatedAt'] = new Date().toISOString();
+    exprAttrNames['#updatedAt'] = 'updatedAt';
 
-    if (updateExp.length === 1) {
-      return errorResponse(
-        res,
-        StatusCodes.BAD_REQUEST,
-        'No valid fields provided for update'
-      );
-    }
-
-    // 3. Perform update
     const result = await dynamoDB.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { id },
         UpdateExpression: `SET ${updateExp.join(', ')}`,
         ExpressionAttributeValues: exprAttrValues,
+        ExpressionAttributeNames: exprAttrNames,
         ReturnValues: 'ALL_NEW',
       })
     );
@@ -236,6 +223,7 @@ const updateExpense = async (req, res) => {
     );
   }
 };
+
 
 // Delete expense
 const deleteExpense = async (req, res) => {
@@ -281,41 +269,57 @@ const deleteExpense = async (req, res) => {
 // Get summary (total expenses within date range)
 const getSummary = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate } = req.body;
 
-    // Fetch all expenses
+    if (!startDate || !endDate) {
+      return errorResponse(
+        res,
+        StatusCodes.BAD_REQUEST,
+        'startDate and endDate are required'
+      );
+    }
+
     const result = await dynamoDB.send(
       new ScanCommand({ TableName: TABLE_NAME })
     );
 
-    let items = result.Items || [];
+    // Filter by date range
+    const filteredItems = (result.Items || []).filter((expense) => {
+      const createdAt = new Date(expense.createdAt);
+      return createdAt >= new Date(startDate) && createdAt <= new Date(endDate);
+    });
 
-    // Convert to Date objects and filter if startDate & endDate provided
-    if (startDate || endDate) {
-      items = items.filter((item) => {
-        const expenseDate = new Date(item.createdAt); // or updatedAt, depending on your logic
-        if (startDate && expenseDate < new Date(startDate)) return false;
-        if (endDate && expenseDate > new Date(endDate)) return false;
-        return true;
-      });
-    }
+    // Calculate totals per category
+    const totals = filteredItems.reduce((acc, expense) => {
+      const cat = expense.category || 'Other';
+      acc[cat] = (acc[cat] || 0) + expense.amount;
+      return acc;
+    }, {});
 
-    // Calculate total
-    const total = items.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
-      0
-    );
+    // Overall total
+    const totalAmount = Object.values(totals).reduce((a, b) => a + b, 0);
+
+    // Calculate percentages per category
+    const summaryByCategory = Object.entries(totals).map(([cat, amount]) => {
+      const percentage = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
+      return {
+        category: cat,
+        amount,
+        percentage: Number(percentage.toFixed(2)),
+      };
+    });
+
+    const responseData = {
+      total: totalAmount,
+      items: filteredItems.length,
+      categories: summaryByCategory,
+    };
 
     return successResponse(
       res,
       StatusCodes.OK,
       'Summary fetched successfully',
-      {
-        total,
-        count: items.length,
-        startDate: startDate || null,
-        endDate: endDate || null,
-      }
+      responseData
     );
   } catch (err) {
     return errorResponse(
@@ -326,6 +330,7 @@ const getSummary = async (req, res) => {
     );
   }
 };
+
 
 module.exports = {
   addExpense,
