@@ -1,30 +1,16 @@
 openapi: 3.0.0
 info:
   title: Expense API
-  version: 1.0.0
+  version: 1.1.0
   description: API for managing expenses with DynamoDB backend
 servers:
   - url: http://localhost:5000
     description: Local dev server
 
 paths:
-  # /expenses:
-  #   get:
-  #     summary: Get all expenses
-  #     tags: [Expenses]
-  #     responses:
-  #       '200':
-  #         description: A list of expenses
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: array
-  #               items:
-  #                 $ref: '#/components/schemas/Expense'
-
   /expenses:
     get:
-      summary: Get expenses (with optional search)
+      summary: Get expenses (with optional search and category filter)
       tags: [Expenses]
       parameters:
         - in: query
@@ -32,7 +18,13 @@ paths:
           schema:
             type: string
           required: false
-          description: Search term applied across multiple fields (id, category, status, description, etc.)
+          description: Search term applied across multiple fields (id, category, description, etc.)
+        - in: query
+          name: category
+          schema:
+            type: string
+          required: false
+          description: Filter by category
       responses:
         '200':
           description: A list of expenses
@@ -41,20 +33,9 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      example: "123"
-                    description:
-                      type: string
-                      example: "Lunch"
-                    amount:
-                      type: number
-                      example: 12.5
+                  $ref: '#/components/schemas/Expense'
         '500':
           description: Internal server error
-
 
     post:
       summary: Add a new expense
@@ -94,6 +75,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense not found
+
     patch:
       summary: Partially update an expense
       description: Update one or more fields of an existing expense by ID. Only the provided fields will be updated.
@@ -110,38 +94,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                description:
-                  type: string
-                  example: "Lunch with client"
-                amount:
-                  type: number
-                  example: 25.5
-                date:
-                  type: string
-                  format: date
-                  example: "2025-09-02"
-              additionalProperties: false
+              $ref: '#/components/schemas/ExpenseUpdate'
       responses:
         '200':
           description: Expense updated successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "success"
-                  code:
-                    type: integer
-                    example: 200
-                  message:
-                    type: string
-                    example: "Expense updated successfully"
-                  data:
-                    $ref: '#/components/schemas/Expense'
+                $ref: '#/components/schemas/Expense'
         '400':
           description: Bad Request (invalid or empty update fields)
         '404':
@@ -161,26 +121,29 @@ paths:
       responses:
         '204':
           description: Expense deleted
+        '404':
+          description: Expense not found
 
   /expenses/summary/total:
     get:
-      summary: Get total expenses summary within optional date range
+      summary: Get total expenses summary within a date range
       tags: [Expenses]
-      parameters:
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-          required: false
-          description: Start date for filtering expenses (inclusive)
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-          required: false
-          description: End date for filtering expenses (inclusive)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startDate, endDate]
+              properties:
+                startDate:
+                  type: string
+                  format: date-time
+                  example: "2025-09-01T00:00:00.000Z"
+                endDate:
+                  type: string
+                  format: date-time
+                  example: "2025-09-30T23:59:59.000Z"
       responses:
         '200':
           description: Total expenses summary
@@ -195,21 +158,25 @@ paths:
                   count:
                     type: integer
                     example: 5
-                  startDate:
-                    type: string
-                    format: date
-                    nullable: true
-                    example: "2025-09-01"
-                  endDate:
-                    type: string
-                    format: date
-                    nullable: true
-                    example: "2025-09-30"
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        category:
+                          type: string
+                          example: "Food"
+                        amount:
+                          type: number
+                          example: 500.00
+                        percentage:
+                          type: number
+                          format: float
+                          example: 40.0
         '400':
           description: Invalid request parameters
         '500':
           description: Failed to fetch summary
-
 
 components:
   schemas:
@@ -222,18 +189,43 @@ components:
           type: string
         amount:
           type: number
+        category:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
       example:
         id: "123"
         description: "Lunch"
         amount: 12.5
+        category: "Food"
+        createdAt: "2025-09-02T08:30:00.000Z"
+        updatedAt: "2025-09-02T08:30:00.000Z"
 
     ExpenseInput:
+      type: object
+      required:
+        - description
+        - amount
+        - category
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+        category:
+          type: string
+
+    ExpenseUpdate:
       type: object
       properties:
         description:
           type: string
         amount:
           type: number
-      required:
-        - description
-        - amount
+        category:
+          type: string
+      additionalProperties: false
