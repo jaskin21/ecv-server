@@ -52,7 +52,6 @@ const addExpense = async (req, res) => {
   }
 };
 
-
 // const getExpenses = async (req, res) => {
 //   try {
 //     console.log('Fetching all expenses from table:', TABLE_NAME);
@@ -79,7 +78,12 @@ const addExpense = async (req, res) => {
 const getExpenses = async (req, res) => {
   try {
     const { search, category } = req.query;
-    console.log('Fetching expenses with search:', search, 'category:', category);
+    console.log(
+      'Fetching expenses with search:',
+      search,
+      'category:',
+      category
+    );
 
     let params = { TableName: TABLE_NAME };
 
@@ -131,8 +135,6 @@ const getExpenses = async (req, res) => {
     );
   }
 };
-
-
 
 // Get expense by ID
 const getExpense = async (req, res) => {
@@ -224,7 +226,6 @@ const updateExpense = async (req, res) => {
   }
 };
 
-
 // Delete expense
 const deleteExpense = async (req, res) => {
   try {
@@ -269,7 +270,7 @@ const deleteExpense = async (req, res) => {
 // Get summary (total expenses within date range)
 const getSummary = async (req, res) => {
   try {
-    const { startDate, endDate } = req.body;
+    const { startDate, endDate } = req.query; // ✅ now reading from query params
 
     if (!startDate || !endDate) {
       return errorResponse(
@@ -283,10 +284,11 @@ const getSummary = async (req, res) => {
       new ScanCommand({ TableName: TABLE_NAME })
     );
 
-    // Filter by date range
+    // Filter by date range (compare only YYYY-MM-DD, ignore time)
     const filteredItems = (result.Items || []).filter((expense) => {
       const createdAt = new Date(expense.createdAt);
-      return createdAt >= new Date(startDate) && createdAt <= new Date(endDate);
+      const expenseDay = createdAt.toISOString().split('T')[0]; // e.g., "2025-09-02"
+      return expenseDay >= startDate && expenseDay <= endDate;
     });
 
     // Calculate totals per category
@@ -330,7 +332,6 @@ const getSummary = async (req, res) => {
     );
   }
 };
-
 
 module.exports = {
   addExpense,
