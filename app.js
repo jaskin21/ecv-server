@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const yaml = require('yamljs');
+const cors = require('cors');
 
 // Your routes
 const expenseRoutes = require('./routes/v1/expensesRoutes');
@@ -12,6 +13,7 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
 var app = express();
+app.use(cors());
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
