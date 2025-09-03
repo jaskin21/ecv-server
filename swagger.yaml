@@ -8,10 +8,31 @@ servers:
     description: Local dev server
 
 paths:
+  # /expenses:
+  #   get:
+  #     summary: Get all expenses
+  #     tags: [Expenses]
+  #     responses:
+  #       '200':
+  #         description: A list of expenses
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: array
+  #               items:
+  #                 $ref: '#/components/schemas/Expense'
+
   /expenses:
     get:
-      summary: Get all expenses
+      summary: Get expenses (with optional search)
       tags: [Expenses]
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          required: false
+          description: Search term applied across multiple fields (id, category, status, description, etc.)
       responses:
         '200':
           description: A list of expenses
@@ -20,7 +41,21 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Expense'
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "123"
+                    description:
+                      type: string
+                      example: "Lunch"
+                    amount:
+                      type: number
+                      example: 12.5
+        '500':
+          description: Internal server error
+
+
     post:
       summary: Add a new expense
       tags: [Expenses]

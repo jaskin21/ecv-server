@@ -56,13 +56,63 @@ const addExpense = async (req, res) => {
   }
 };
 
+// const getExpenses = async (req, res) => {
+//   try {
+//     console.log('Fetching all expenses from table:', TABLE_NAME);
+
+//     const result = await dynamoDB.send(
+//       new ScanCommand({ TableName: TABLE_NAME })
+//     );
+
+//     return successResponse(
+//       res,
+//       StatusCodes.OK,
+//       'Expenses fetched successfully',
+//       result.Items || []
+//     );
+//   } catch (err) {
+//     return errorResponse(
+//       res,
+//       StatusCodes.INTERNAL_SERVER_ERROR,
+//       'Failed to fetch expenses',
+//       err.message
+//     );
+//   }
+// };
 const getExpenses = async (req, res) => {
   try {
-    console.log('Fetching all expenses from table:', TABLE_NAME);
+    const { search } = req.query;
+    console.log('Fetching expenses with search:', search);
 
-    const result = await dynamoDB.send(
-      new ScanCommand({ TableName: TABLE_NAME })
-    );
+    let result;
+
+    if (search) {
+      // ✅ Search across multiple fields using contains()
+      const filterExpressions = [];
+      const expressionValues = {
+        ':search': search,
+      };
+
+      // Add the fields you want searchable here
+      const searchableFields = ['id', 'category', '#status', 'description']; // 👈 alias status
+
+      searchableFields.forEach((field) => {
+        filterExpressions.push(`contains(${field}, :search)`);
+      });
+
+      const params = {
+        TableName: TABLE_NAME,
+        FilterExpression: filterExpressions.join(' OR '),
+        ExpressionAttributeValues: expressionValues,
+        ExpressionAttributeNames: {
+          '#status': 'status', // 👈 map alias back to real field
+        },
+      };
+
+      result = await dynamoDB.send(new ScanCommand(params));
+    } else {
+      result = await dynamoDB.send(new ScanCommand({ TableName: TABLE_NAME }));
+    }
 
     return successResponse(
       res,
@@ -242,14 +292,22 @@ const getSummary = async (req, res) => {
     }
 
     // Calculate total
-    const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const total = items.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0
+    );
 
-    return successResponse(res, StatusCodes.OK, 'Summary fetched successfully', {
-      total,
-      count: items.length,
-      startDate: startDate || null,
-      endDate: endDate || null,
-    });
+    return successResponse(
+      res,
+      StatusCodes.OK,
+      'Summary fetched successfully',
+      {
+        total,
+        count: items.length,
+        startDate: startDate || null,
+        endDate: endDate || null,
+      }
+    );
   } catch (err) {
     return errorResponse(
       res,
@@ -259,7 +317,6 @@ const getSummary = async (req, res) => {
     );
   }
 };
-
 
 module.exports = {
   addExpense,
