@@ -87,25 +87,34 @@ const getExpenses = async (req, res) => {
     let result;
 
     if (search) {
-      // ✅ Search across multiple fields using contains()
+      // ✅ Try to detect if the search term is a number
+      const searchNumber = Number(search);
+      const isNumeric = !isNaN(searchNumber);
+
       const filterExpressions = [];
       const expressionValues = {
         ':search': search,
       };
 
-      // Add the fields you want searchable here
-      const searchableFields = ['id', 'category', '#status', 'description']; // 👈 alias status
+      // Fields that are searchable as strings
+      const searchableFields = ['id', 'category', '#status', 'description']; // alias status
 
       searchableFields.forEach((field) => {
         filterExpressions.push(`contains(${field}, :search)`);
       });
+
+      // ✅ Add numeric match if search is a number
+      if (isNumeric) {
+        filterExpressions.push('amount = :searchNumber');
+        expressionValues[':searchNumber'] = searchNumber;
+      }
 
       const params = {
         TableName: TABLE_NAME,
         FilterExpression: filterExpressions.join(' OR '),
         ExpressionAttributeValues: expressionValues,
         ExpressionAttributeNames: {
-          '#status': 'status', // 👈 map alias back to real field
+          '#status': 'status', // reserved keyword fix
         },
       };
 
