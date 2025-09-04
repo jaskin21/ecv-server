@@ -19,7 +19,7 @@ module.exports = {
     {
       id: '3',
       description: 'Coffee',
-      amount: 5,
+      amount: 58,
       category: 'Entertainment',
       createdAt: '2025-09-02T08:30:00.000Z',
       updatedAt: '2025-09-02T08:30:00.000Z',
@@ -27,7 +27,7 @@ module.exports = {
     {
       id: '4',
       description: 'Groceriess',
-      amount: 5000,
+      amount: 40,
       category: 'Food',
       createdAt: '2025-09-01T10:00:00.000Z',
       updatedAt: '2025-09-01T10:00:00.000Z',
@@ -35,7 +35,7 @@ module.exports = {
     {
       id: '53123',
       description: 'Transports',
-      amount: 20,
+      amount: 10,
       category: 'Transport',
       createdAt: '2025-09-01T12:00:00.000Z',
       updatedAt: '2025-09-01T12:00:00.000Z',
@@ -43,7 +43,7 @@ module.exports = {
     {
       id: '6',
       description: 'Coffees',
-      amount: 5312,
+      amount: 22,
       category: 'Entertainment',
       createdAt: '2025-09-02T08:30:00.000Z',
       updatedAt: '2025-09-02T08:30:00.000Z',
