@@ -1,211 +1,88 @@
-# Leaderboard-API
+# Expense Tracker Server
 
-- [Requirements](#requirements)
-- [Node Version](#node-version)
-- [Installation](#installation)
-- [Run Project](#run-project)
-- [Environment](#environment)
-- [User Endpoints](#user-endpoints)
-- [Others](#0thers)
+This is the backend server for the Expense Tracker application. It is built with Node.js, Express, and DynamoDB (AWS) as the database.
 
----
+## Features
 
-# Requirements
+- RESTful API for managing expenses (CRUD)
+- DynamoDB integration for persistent storage
+- Input validation with Joi
+- CORS support for frontend integration
+- Swagger UI documentation (`/api-docs`)
+- Seed script for populating test data
 
-- [Node JS](https://nodejs.org/en)
-- [npm](https://www.npmjs.com/)
-- [Mongo DB](https://www.mongodb.com/docs/) _(Optional)_
+## Project Structure
 
----
+```
+server/
+  app.js                # Main Express app
+  bin/www               # Server entry point
+  config/dynamodb.js    # DynamoDB client setup
+  controllers/          # Route handlers (business logic)
+  middleware/           # Express middlewares (validation, etc.)
+  public/               # Static assets (CSS, images)
+  routes/               # Express route definitions
+  seed/                 # Data seeding scripts
+  utils/                # Utility functions (response helpers)
+  validation/           # Joi validation schemas
+  views/                # Jade templates for server-rendered pages
+  swagger.yaml          # OpenAPI spec for API docs
+  package.json          # NPM dependencies and scripts
+```
 
----
+## Getting Started
 
-# Node Version
+### Prerequisites
 
-- v18.16.0
+- Node.js (v18+ recommended)
+- AWS credentials (for DynamoDB access)
+- DynamoDB table (will be created automatically if not present)
 
----
+### Environment Variables
 
-# Installation
+Create a `.env` file in the `server/` directory with the following variables:
+
+```
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=ap-southeast-1
+DYNAMODB_TABLE_NAME=expense-tracker
+PORT=5000  # You can override the default server port here
+```
+
+> **Note:**  
+> The server listens on port `5000` by default, but you can override this by setting the `PORT` variable in the `.env` file.
+
+### Install Dependencies
 
 ```sh
+cd server
 npm install
 ```
 
----
-
-# Run Project
-
-Once the dependencies are installed:
+### Running the Server
 
 ```sh
-npm run start
+npm start
 ```
 
----
+The server will run on [http://localhost:5000](http://localhost:5000).
 
-# Environment
+### API Documentation
 
-The Project has its own specific environment variables, just  add `.env` (dot env) file or copy the `.env.example` file and edit their values.
+Visit [http://localhost:5000/api-docs](http://localhost:5000/api-docs) for interactive Swagger UI documentation.
 
-| ENV VARIABLE       | DESCRIPTION                                                                                                                    | TYPE               | REQUIRED | DEFAULT VALUE               |
-| :----------------- | :----------------------------------------------------------------------------------------------------------------------------- | :----------------- | :------- | :-------------------------- |
-| `DB_CONNECTION`    | For Mongo DB, usually the host                                                                                                 | `string`           | NO       | `mongodb://localhost:27017` |
-| `DB_NAME`          | For Mongo DB, the database name                                                                                                | `string`           | YES       | `leaderboard`              |
-| `PORT`             | The Port of the Server                                                                                                         | `number`           | NO       | `5000`                      |
-| `TOKEN_EXPIRES_IN` | When will the Token expires, expressed in seconds or a string describing a time span                                           | `string \| number` | YES      | N/A                         |
-| `TOKEN_SECRET`     | The Token Secret for JWT                                                                                                       | `string`           | YES      | N/A                         |
+### Seeding Test Data
 
----
+To populate the database with sample expenses:
 
-# User Endpoints
-
-## `POST /user`
-
-Creates a user in the db with the coresponding **name**
-
-## Request
-```
-{
-	"name": "Randy"
-}	
+```sh
+npm run seed
 ```
 
-## Response
-```
-{
-  "user": {
-    "_id": "5e25bfed830ff6000c7ecb3e",
-    "name": "Randy"
-  }
-}
-```
----
-## `GET /user/:_id`
+## Scripts
 
-Retrieve a user from the db using the coresponding **_id**
+- `npm start` — Start the server with nodemon
+- `npm run seed` — Seed DynamoDB with sample expenses
 
-## Response
-```
-{
-  "user": {
-    "_id": "5e25bfed830ff6000c7ecb3e",
-    "name": "Randy"
-  }
-}
-```
----
-
-# Leaderboard Endpoints
-
-## `POST /admin/leaderboard`
-
-Admin endpoint for an instance of the leaderboard. 
-
-### Request
-```
-{
-	"name": "WatchMojo Top 10"
-}	
-
-```
-
-### Response
-```JSON
-{
-  "board": {
-    "_id": "5e25c253830ff6000c7ecb40",
-    "name": "WatchMojo Top 10"
-  }
-}
-```
----
-
-## `GET /leaderboard/:_id?per_page=x&page=y`
-
-Retrieve a leaderboard with a list of entries sorted entries. Where the highest scores is at the top of the list. 
-
-### Response
-
-``` JSON
-{
-  "board": {
-    "_id": "5e25c253830ff6000c7ecb40",
-    "name": "WatchMojo Top 10",
-    "entries": [
-      {
-        "score": 70,
-        "user_id": "5e25c5cf830ff6000c7ecb43",
-        "scored_at": "2020-01-20T15:26:35.115Z",
-        "rank": 0,
-        "name": "Plurk"
-      },
-      {
-        "score": 40,
-        "user_id": "5e25bfed830ff6000c7ecb3e",
-        "scored_at": "2020-01-20T15:25:49.955Z",
-        "rank": 1,
-        "name": "Randy"
-      },
-      {
-        "score": 30,
-        "user_id": "5e25c5d9830ff6000c7ecb44",
-        "scored_at": "2020-01-20T15:25:10.699Z",
-        "rank": 2,
-        "name": "Burp"
-      },
-      {
-        "score": 20,
-        "user_id": "5e25c5bf830ff6000c7ecb42",
-        "scored_at": "2020-01-20T15:40:28.882Z",
-        "rank": 3,
-        "name": "Derp"
-      }
-    ]
-  }
-}
-```
----
-
-## `PUT /leaderboard/:_id/user/:user_id/add_score`
-
-Adds `score_to_add` value to the score of the user with the corresponding `user_id`. 
-
-### Request
-``` JSON
-{
-	"score_to_add": 10
-}
-```
-
-### Response
-``` JSON
-{
-  "entry": {
-    "_id": "5e25c608830ff60009268354",
-    "board_id": "5e25c253830ff6000c7ecb40",
-    "score": 20,
-    "scored_at": "2020-01-20T15:40:28.882+00:00",
-    "user_id": "5e25c5bf830ff6000c7ecb42"
-  }
-}
-``` 
----
-
-
-# Others
-
-Other Features added
-
-## Middleware
-
-Implement an API token authentication middleware. For the exam, create the token when creating a user.
-
-## Background Worker for bot accounts
-
-Create a background worker that triggers whenever a user gets first place in a leaderboard. Have a fake user (bot) auto score 10 points every 5 seconds until it overtakes the player. 
-
-# Documentation
-- Added ReadMe file describing the framework and setup.
-- Give installation instructions if certain frameworks are version sensitive.
-- Provide basic instructions to run your exam project.
+For more details, see the [swagger.yaml](server/swagger.yaml) file or the code in the [controllers/](server/controllers/) and [routes/](server/routes/) directories.
